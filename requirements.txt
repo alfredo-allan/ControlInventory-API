@@ -1,23 +1,39 @@
 # Backend Flask do ControlInventory — persistência via MySQL (PythonAnywhere)
-# ou SQLite (dev local). Versões travadas na instalação testada nesta sessão.
+# ou SQLite (dev local).
+#
+# IMPORTANTE (corrigido em 2026-10-13): este arquivo era gerado com `pip
+# freeze` direto no sandbox de desenvolvimento, com versões EXATAS. Isso
+# quebrou na primeira instalação de verdade fora daqui: o sandbox usa um
+# índice de pacotes próprio que já tinha SQLAlchemy 2.1.4 disponível, mas
+# no PyPI público (o que `pip install` usa no seu servidor/máquina) a
+# versão estável mais recente da série 2.x ainda é a 2.0.x — 2.1 só existe
+# em beta (2.1.0b1/b2/b3) lá. Resultado: "Could not find a version that
+# satisfies the requirement SQLAlchemy==2.1.4" em qualquer instalação fora
+# deste sandbox.
+#
+# Correção: troquei pins exatos por faixas mínimas (">=") nos pacotes que
+# tinham esse risco, e mantive versão exata só nos 4 que o pip já tinha
+# confirmado existir de verdade no PyPI (Flask, Flask-SQLAlchemy,
+# Flask-Migrate, flask-cors — a instalação chegou a baixar esses antes de
+# falhar no SQLAlchemy). As dependências transitivas do Flask (Werkzeug,
+# Jinja2, MarkupSafe, blinker, click, itsdangerous, Mako) não precisam de
+# pin manual — o próprio Flask/Flask-SQLAlchemy/Flask-Migrate/alembic já
+# puxam versões compatíveis sozinhos; pin manual delas só reintroduz o
+# mesmo risco de "versão que não existe fora do sandbox".
+#
+# O código não usa nenhuma sintaxe específica de SQLAlchemy 2.1 (é tudo
+# `db.Column(...)` clássico, compatível com 2.0.x também), então essa
+# troca não exige nenhuma mudança de código — só reflete melhor o que
+# existe de verdade no PyPI público.
 
 Flask==3.1.3
 Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.1.0
 flask-cors==6.0.5
-SQLAlchemy==2.1.4
-alembic==1.20.0
-PyMySQL==1.2.3
-python-dotenv==1.2.4
-PyJWT==2.15.1
-Werkzeug==3.1.9
-python-docx==1.2.0
-lxml==6.1.3
-
-# Dependências transitivas do Flask (fixadas pra reprodutibilidade do deploy)
-blinker==1.9.0
-click==8.5.0
-itsdangerous==2.2.0
-Jinja2==3.1.6
-Mako==1.4.3
-MarkupSafe==3.0.4
+SQLAlchemy>=2.0,<3.0
+alembic>=1.13
+PyMySQL>=1.1
+python-dotenv>=1.0
+PyJWT>=2.8
+python-docx>=1.1
+lxml>=5.0
