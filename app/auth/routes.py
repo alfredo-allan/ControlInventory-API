@@ -21,6 +21,14 @@ def login():
     if not usuario or not check_password_hash(usuario.senha_hash, senha):
         return jsonify({"erro": "Nome ou senha incorretos."}), 401
 
+    # Usuário desativado pelo admin (2026-10-13, soft delete — ver
+    # PATCH /api/auth/usuarios/<id>) não consegue mais entrar, mesmo com a
+    # senha certa. Checagem separada da de senha errada pra não vazar se o
+    # nome existe, mas com mensagem clara o suficiente pro operador saber
+    # que precisa falar com o admin (em vez de achar que errou a senha).
+    if not usuario.ativo:
+        return jsonify({"erro": "Usuário desativado. Fale com o administrador."}), 403
+
     token = gerar_token(usuario)
 
     # Auditoria simples — uma linha por login bem-sucedido, pro admin
@@ -63,7 +71,13 @@ def listar_usuarios():
     antes de criar mais um. Nunca devolve `senha_hash`."""
     usuarios = Usuario.query.filter_by(empresa_id=g.empresa_id).order_by(Usuario.criado_em.desc()).all()
     return jsonify([
-        {"id": u.id, "nome": u.nome, "perfil": u.perfil, "criadoEm": u.criado_em.isoformat() if u.criado_em else None}
+        {
+            "id": u.id,
+            "nome": u.nome,
+            "perfil": u.perfil,
+            "ativo": u.ativo,
+            "criadoEm": u.criado_em.isoformat() if u.criado_em else None,
+        }
         for u in usuarios
     ])
 
@@ -95,3 +109,46 @@ def criar_usuario():
     db.session.commit()
 
     return jsonify({"id": usuario.id, "nome": usuario.nome, "perfil": usuario.perfil}), 201
+
+
+@bp.patch("/usuarios/<int:usuario_id>")
+@login_obrigatorio(perfis=["admin"])
+def editar_usuario(usuario_id):
+    """Admin trocar a senha de um usuário e/ou ativar/desativar o acesso
+    dele (2026-10-13, pedido do usuário: 'colocar o potencial do admin de
+    trocar a senha e excluir usuários'). 'Excluir' aqui é soft delete
+    (`ativo=False`) — ver comentário em `Usuario.ativo` (models.py) pro
+    porquê: um hard delete quebraria `LoginLog.usuario_id`, que é
+    obrigatório, e apagaria a auditoria de login desse usuário.
+
+    Corpo aceita qualquer combinação de `senha` e/ou `ativo` — pelo menos
+    um dos dois precisa vir."""
+    usuario = Usuario.query.filter_by(id=usuario_id, empresa_id=g.empresa_id).first()
+    if not usuario:
+        return jsonify({"erro": "Usuário não encontrado."}), 404
+
+    dados = request.get_json(silent=True) or {}
+    se_nos_body = "senha" in dados
+    ativo_no_body = "ativo" in dados
+
+    if not se_nos_body and not ativo_no_body:
+        return jsonify({"erro": "Informe 'senha' e/ou 'ativo' no corpo da requisição."}), 400
+
+    if se_nos_body:
+        senha = dados.get("senha") or ""
+        if len(senha) < 6:
+            return jsonify({"erro": "A senha precisa ter pelo menos 6 caracteres."}), 400
+        usuario.senha_hash = generate_password_hash(senha)
+
+    if ativo_no_body:
+        novo_ativo = bool(dados.get("ativo"))
+        # Autoproteção: o admin não pode se desativar pela própria tela —
+        # evita o cenário de ficar trancado pra fora sem ter como reverter
+        # (a troca de senha dele mesmo continua permitida acima).
+        if not novo_ativo and usuario.id == g.usuario_id:
+            return jsonify({"erro": "Você não pode desativar o seu próprio usuário."}), 400
+        usuario.ativo = novo_ativo
+
+    db.session.commit()
+
+    return jsonify({"id": usuario.id, "nome": usuario.nome, "perfil": usuario.perfil, "ativo": usuario.ativo})

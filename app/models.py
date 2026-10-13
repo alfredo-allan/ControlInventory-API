@@ -48,6 +48,11 @@ class Usuario(db.Model):
     nome = db.Column(db.String(200), nullable=False)
     senha_hash = db.Column(db.String(255), nullable=False)
     perfil = db.Column(db.String(20), nullable=False, default="operador")  # 'admin' | 'operador'
+    # Soft delete (2026-10-13, pedido do usuário: admin poder "excluir"
+    # usuário sem quebrar o histórico de LoginLog, que referencia usuario_id
+    # como obrigatório). Desativar = login passa a recusar esse usuário
+    # (ver auth/routes.py), mas toda a auditoria antiga continua intacta.
+    ativo = db.Column(db.Boolean, nullable=False, default=True)
     criado_em = db.Column(db.DateTime(timezone=True), default=_agora)
 
     empresa = db.relationship("Empresa", back_populates="usuarios")
@@ -168,6 +173,8 @@ class PesquisaSemanalItem(db.Model):
     quantidade_esperada = db.Column(db.Integer, default=0)
     quantidade_contada = db.Column(db.Integer, default=0)
     divergencia = db.Column(db.Integer, default=0)
+    # 'unidade' | 'caixa' (2026-10-13) — mesmo padrão de ProdutoRegistrado.quantity_type
+    quantity_type = db.Column(db.String(20), nullable=False, default="unidade")
 
     pesquisa = db.relationship("PesquisaSemanal", back_populates="itens")
 
@@ -219,6 +226,8 @@ class Avaria(db.Model):
     codigo_ean = db.Column(db.String(32), nullable=False)
     descricao = db.Column(db.String(300))
     quantidade = db.Column(db.Integer, nullable=False)
+    # 'unidade' | 'caixa' (2026-10-13) — mesmo padrão de ProdutoRegistrado.quantity_type
+    quantity_type = db.Column(db.String(20), nullable=False, default="unidade")
     motivo = db.Column(db.String(300))  # texto livre: "quebrou no transporte", "caixa amassada", etc. — opcional
     operador = db.Column(db.String(200))
     nome_cliente = db.Column(db.String(200))

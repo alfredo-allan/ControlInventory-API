@@ -23,6 +23,7 @@ def listar_avarias():
                 "codigoEAN": a.codigo_ean,
                 "descricao": a.descricao,
                 "quantidade": a.quantidade,
+                "quantityType": a.quantity_type,
                 "motivo": a.motivo,
                 "operador": a.operador,
                 "nomeCliente": a.nome_cliente,

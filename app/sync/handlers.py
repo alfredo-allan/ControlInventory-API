@@ -147,6 +147,7 @@ def handle_avaria_registrar(payload: dict) -> None:
             codigo_ean=produto.codigo_ean,
             descricao=payload.get("descricao") or produto.descricao,
             quantidade=quantidade,
+            quantity_type=payload.get("quantityType") or "unidade",
             motivo=payload.get("motivo"),
             operador=payload.get("operador"),
             nome_cliente=payload.get("nomeCliente"),
@@ -267,6 +268,7 @@ def handle_estoque_fechar_pesquisa_semanal(payload: dict) -> None:
                 quantidade_esperada=item["quantidadeEsperada"],
                 quantidade_contada=item["quantidadeContada"],
                 divergencia=item["divergencia"],
+                quantity_type=item.get("quantityType") or "unidade",
             )
         )
 

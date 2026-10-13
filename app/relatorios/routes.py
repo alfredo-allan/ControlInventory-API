@@ -73,7 +73,7 @@ def relatorio_avarias():
             linha[1].text = a.nome_cliente or a.mercado_slug
             linha[2].text = a.codigo_ean or "—"
             linha[3].text = a.descricao or "—"
-            linha[4].text = str(a.quantidade)
+            linha[4].text = f"{a.quantidade} {'cx' if a.quantity_type == 'caixa' else 'un'}"
             linha[5].text = a.operador or "—"
             linha[6].text = a.motivo or "—"
 
