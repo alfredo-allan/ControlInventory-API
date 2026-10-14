@@ -25,6 +25,7 @@ def listar_pedidos():
                 "codigoEAN": p.codigo_ean,
                 "cicloId": p.ciclo_id,
                 "quantidade": p.quantidade,
+                "quantityType": p.quantity_type,
                 "operador": p.operador,
                 "atualizadoEm": p.atualizado_em.isoformat() if p.atualizado_em else None,
             }

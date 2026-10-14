@@ -258,6 +258,11 @@ class PedidoItem(db.Model):
     codigo_ean = db.Column(db.String(32), nullable=False)
     ciclo_id = db.Column(db.String(20), nullable=False)  # mesma semana ISO da Pesquisa Semanal, ex: "2026-W41"
     quantidade = db.Column(db.Integer, nullable=False, default=0)
+    # 'unidade' | 'caixa' (2026-10-14) — faltava aqui desde a criação da
+    # tabela; o operador podia escolher unidade/caixa na Pesquisa Semanal mas
+    # a "Qtd. a pedir"/Giro Registrado sempre assumia 'unidade' por não ter
+    # onde guardar a escolha. Mesmo padrão de Avaria/PesquisaSemanalItem.
+    quantity_type = db.Column(db.String(20), nullable=False, default="unidade")
     operador = db.Column(db.String(200))
     atualizado_em = db.Column(db.DateTime(timezone=True), default=_agora, onupdate=_agora)
 

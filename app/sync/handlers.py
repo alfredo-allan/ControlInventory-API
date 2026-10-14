@@ -299,6 +299,7 @@ def handle_pedido_definir(payload: dict) -> None:
         db.session.add(item)
 
     item.quantidade = payload.get("quantidade", 0)
+    item.quantity_type = payload.get("quantityType") or "unidade"
     item.operador = payload.get("operador")
 
 
