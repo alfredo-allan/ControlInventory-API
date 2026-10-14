@@ -30,6 +30,7 @@ def create_app(config_class=None):
     from app.avarias.routes import bp as avarias_bp
     from app.admin.routes import bp as admin_bp
     from app.relatorios.routes import bp as relatorios_bp
+    from app.pedidos.routes import bp as pedidos_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(sync_bp)
@@ -39,6 +40,7 @@ def create_app(config_class=None):
     app.register_blueprint(avarias_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(relatorios_bp)
+    app.register_blueprint(pedidos_bp)
 
     # "Tudo num site só" (2026-10-13) — registrada só se a pasta do build do
     # frontend (FRONTEND_DIST_DIR) existir de verdade. Em dev local ela não

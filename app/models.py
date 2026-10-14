@@ -235,6 +235,37 @@ class Avaria(db.Model):
     registrado_em = db.Column(db.DateTime(timezone=True), default=_agora)
 
 
+class PedidoItem(db.Model):
+    """'Quantidade a pedir' / Giro Registrado (2026-10-14, documento de
+    escopo do usuário, seções 3 e 4) — espelha `PedidoItem` em
+    estoqueStorage.ts. Uma linha por produto+mercado+ciclo: é o que o
+    operador de fato decidiu pedir, editável, DIFERENTE da sugestão
+    calculada em tempo real (`calcularSugestaoCompleta`, que nunca é
+    persistida — é só um número mostrado na tela).
+
+    Existir uma linha aqui já significa "preenchido" — inclusive quando
+    `quantidade=0`, que é como o operador marca ruptura de propósito
+    (decisão confirmada via AskUserQuestion: "0" digitado conta como
+    preenchido/ruptura, não é tratado igual a "nunca mexi nesse campo").
+    Por isso não existe aqui nenhuma coluna boolean "preenchido" — a
+    ausência de linha É o estado "não preenchido"."""
+
+    __tablename__ = "pedido_itens"
+
+    id = db.Column(db.String(36), primary_key=True, default=_uuid)
+    empresa_id = db.Column(db.Integer, db.ForeignKey("empresas.id"), nullable=False)
+    mercado_slug = db.Column(db.String(120), nullable=False)
+    codigo_ean = db.Column(db.String(32), nullable=False)
+    ciclo_id = db.Column(db.String(20), nullable=False)  # mesma semana ISO da Pesquisa Semanal, ex: "2026-W41"
+    quantidade = db.Column(db.Integer, nullable=False, default=0)
+    operador = db.Column(db.String(200))
+    atualizado_em = db.Column(db.DateTime(timezone=True), default=_agora, onupdate=_agora)
+
+    __table_args__ = (
+        db.UniqueConstraint("empresa_id", "mercado_slug", "codigo_ean", "ciclo_id", name="uq_pedido_item"),
+    )
+
+
 class LoginLog(db.Model):
     """Auditoria simples de acesso — uma linha por login bem-sucedido.
     Pedido do usuário ao perceber que não existia nenhum jeito de saber

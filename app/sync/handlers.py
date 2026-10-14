@@ -13,7 +13,7 @@
 from datetime import datetime
 
 from app.extensions import db
-from app.models import Empresa, Produto, Mercado, SaldoEstoque, Movimentacao, PesquisaSemanal, PesquisaSemanalItem, ProdutoRegistrado, Avaria
+from app.models import Empresa, Produto, Mercado, SaldoEstoque, Movimentacao, PesquisaSemanal, PesquisaSemanalItem, ProdutoRegistrado, Avaria, PedidoItem
 
 
 def _get_empresa(empresa_slug: str) -> Empresa:
@@ -273,6 +273,47 @@ def handle_estoque_fechar_pesquisa_semanal(payload: dict) -> None:
         )
 
 
+def handle_pedido_definir(payload: dict) -> None:
+    """'Quantidade a pedir' (2026-10-14, documento de escopo) — upsert por
+    (mercado, EAN, ciclo), igual o padrão de saldo/preço. Diferente dos
+    outros handlers, aqui o `id` do payload (gerado pelo cliente) não é a
+    chave de busca — a chave de negócio é (mercado_slug, codigo_ean,
+    ciclo_id), pra dois aparelhos editando o mesmo item no mesmo ciclo
+    convergirem numa linha só em vez de duplicar. `quantidade=0` é um
+    valor válido (ruptura marcada de propósito), não some a linha."""
+    empresa = _get_empresa(payload.get("empresaId", "frutap"))
+    mercado = _get_or_create_mercado(empresa, payload["mercadoId"])
+    produto = _get_or_create_produto(empresa, payload["codigoEAN"])
+
+    item = PedidoItem.query.filter_by(
+        empresa_id=empresa.id, mercado_slug=mercado.slug, codigo_ean=produto.codigo_ean, ciclo_id=payload["cicloId"]
+    ).first()
+    if not item:
+        item = PedidoItem(
+            id=payload.get("id"),
+            empresa_id=empresa.id,
+            mercado_slug=mercado.slug,
+            codigo_ean=produto.codigo_ean,
+            ciclo_id=payload["cicloId"],
+        )
+        db.session.add(item)
+
+    item.quantidade = payload.get("quantidade", 0)
+    item.operador = payload.get("operador")
+
+
+def handle_pedido_remover(payload: dict) -> None:
+    """Desfaz um item do Giro Registrado — volta pro estado 'não
+    preenchido' (sem linha nenhuma). Idempotente: se já não existir, não
+    faz nada (nunca um erro por tentar remover duas vezes)."""
+    empresa = _get_empresa(payload.get("empresaId", "frutap"))
+    item = PedidoItem.query.filter_by(
+        empresa_id=empresa.id, mercado_slug=payload["mercadoId"], codigo_ean=payload["codigoEAN"], ciclo_id=payload["cicloId"]
+    ).first()
+    if item:
+        db.session.delete(item)
+
+
 HANDLERS = {
     "produto.registrar": handle_produto_registrar,
     # 'atualizar' é literalmente o mesmo upsert-por-id que 'registrar' já
@@ -287,4 +328,6 @@ HANDLERS = {
     "estoque.definirPreco": handle_estoque_definir_preco,
     "estoque.registrarMovimentacao": handle_estoque_registrar_movimentacao,
     "estoque.fecharPesquisaSemanal": handle_estoque_fechar_pesquisa_semanal,
+    "pedido.definir": handle_pedido_definir,
+    "pedido.remover": handle_pedido_remover,
 }
